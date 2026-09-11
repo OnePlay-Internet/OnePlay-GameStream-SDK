@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.1
+
+- `Initialize()` now waits for the platform's first session snapshot before returning
+  `OPC_OK`. Previously it returned as soon as the connection was open, so a game calling
+  `GetSessionInfo()` on the next line could read an empty struct and conclude it was not
+  streaming at all.
+- `Initialize()` can now return `OPC_DISCONNECTED`, when the platform is reachable but
+  does not answer within `connectTimeoutMs`. Treat it the same way as `OPC_NOT_ON_SERVER`.
+
+No API or ABI change. Replace the library; you do not need to recompile.
+
 ## 1.0.0
 
 First public release.

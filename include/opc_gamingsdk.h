@@ -153,7 +153,7 @@
 
 #define OPC_SDK_VERSION_MAJOR 1
 #define OPC_SDK_VERSION_MINOR 0
-#define OPC_SDK_VERSION_PATCH 0
+#define OPC_SDK_VERSION_PATCH 1
 
 #if defined(_WIN32)
   #define OPC_CALL __cdecl
@@ -386,7 +386,15 @@ typedef struct OpcInitParams {
 } OpcInitParams;
 
 /* Call once at startup. Safe to call again; later calls return the first result.
- * Returns OPC_NOT_ON_SERVER when not running on OnePlay, which is not a failure. */
+ *
+ * Returns OPC_NOT_ON_SERVER when not running on OnePlay, which is not a failure.
+ *
+ * On OPC_OK the session is already populated, so calling GetSessionInfo() on the
+ * very next line gives you real values rather than an empty struct.
+ *
+ * Returns OPC_DISCONNECTED if we were reachable but did not answer within
+ * connectTimeoutMs. Treat it as "not streaming": the same fallback you use for
+ * OPC_NOT_ON_SERVER is the right one. */
 OpcStatus OPC_CALL OpcInitialize(const OpcInitParams *params);
 
 /* Call once at shutdown. Safe to call even if Initialize() was not. */

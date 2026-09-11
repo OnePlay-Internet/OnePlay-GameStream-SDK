@@ -8,7 +8,7 @@ the player's phone, tablet, TV, browser or laptop. The game sees an ordinary Win
 desktop, so on its own it cannot tell a phone from a television, and it has no way to raise
 a phone's on-screen keyboard. This SDK answers those questions.
 
-**Version 1.0.0** · Windows x64 · C and C++
+**Version 1.0.1** · Windows x64 · C and C++
 
 ---
 
