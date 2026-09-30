@@ -9,6 +9,7 @@
   of a hang.
 - Fixed: calling `Shutdown()` from inside your event handler crashed. It now works.
 - Fixed: an app name or URL that is not valid UTF-8 crashed `Initialize()` / `OpenUrl()`.
+- Fixed: a malformed message from the platform could crash the game. It is now ignored.
 - `KEYBOARD_SHOWN` and `KEYBOARD_HIDDEN` now arrive on a live OnePlay session after your
   own `OpenVirtualKeyboard()` / `CloseVirtualKeyboard()`, as they already did on the mock
   host. (This part is a platform change; it needs no new library.)
