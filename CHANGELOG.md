@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.2
+
+- **Fixed: `OpenVirtualKeyboard()`, `CloseVirtualKeyboard()` and `OpenUrl()` could freeze the
+  calling thread.** On a session where nothing was changing, the call waited until the
+  platform next sent an update, which could be never. They now return at once; if the
+  platform does not take the request within a second, you get `OPC_DISCONNECTED` instead
+  of a hang.
+- Fixed: calling `Shutdown()` from inside your event handler crashed. It now works.
+- Fixed: an app name or URL that is not valid UTF-8 crashed `Initialize()` / `OpenUrl()`.
+- `KEYBOARD_SHOWN` and `KEYBOARD_HIDDEN` now arrive on a live OnePlay session after your
+  own `OpenVirtualKeyboard()` / `CloseVirtualKeyboard()`, as they already did on the mock
+  host. (This part is a platform change; it needs no new library.)
+
+No API or ABI change. Replace the library; you do not need to recompile.
+
 ## 1.0.1
 
 - `Initialize()` now waits for the platform's first session snapshot before returning

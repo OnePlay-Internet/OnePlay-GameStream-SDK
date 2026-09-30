@@ -8,7 +8,7 @@ the player's phone, tablet, TV, browser or laptop. The game sees an ordinary Win
 desktop, so on its own it cannot tell a phone from a television, and it has no way to raise
 a phone's on-screen keyboard. This SDK answers those questions.
 
-**Version 1.0.1** · Windows x64 · C and C++
+**Version 1.0.2** · Windows x64 · C and C++
 
 ---
 
@@ -54,16 +54,61 @@ the binary; it fills in the `structSize` fields for you.
 ### Text entry on a touch device
 
 ```cpp
-if (info.capabilities & OPC_CAP_VIRTUAL_KEYBOARD) {
+// When one of your text fields gains focus:
+if (opc::GamingSdk::Has(OPC_CAP_VIRTUAL_KEYBOARD)) {
     const OpcRect field { x, y, width, height };   // your render resolution
-    opc::GamingSdk::OpenVirtualKeyboard(field);
+    opc::GamingSdk::OpenVirtualKeyboard(field, OPC_KEYBOARD_EMAIL);   // TEXT, NUMBER or EMAIL
 }
+
+// When it loses focus, or the player submits:
+opc::GamingSdk::CloseVirtualKeyboard();
 ```
 
-What the player types arrives as ordinary key input — no special handling needed. Pass the
-field rectangle: on a phone the keyboard covers the lower third of the screen, which is
-where a text field usually is, so without it the keyboard covers the field it was raised
-for.
+- **What the player types arrives as ordinary key input** — no special handling needed.
+- **Pass the field rectangle.** On a phone the keyboard covers the lower third of the
+  screen, which is where a text field usually is; the rectangle lets the player's device
+  move the view so the keyboard does not cover the field it was raised for.
+- **The hint picks the layout** (letters, number pad, email). Some players' devices ignore
+  it and show a plain keyboard, so still validate what you receive.
+- **Close it yourself** when the field loses focus. Nothing closes it for you.
+- **You own the keyboard.** While your game is connected, the platform does not raise a
+  keyboard on its own when your text fields get focus, so call `OpenVirtualKeyboard()`
+  for every field that needs one.
+- **Without `OPC_CAP_VIRTUAL_KEYBOARD`** the call returns `OPC_UNSUPPORTED` and no keyboard
+  appears. The player's device has no way to show one, so do not leave them on a field
+  they cannot type into: skip it, or offer another way to enter the value.
+- **Events:** your own `OpenVirtualKeyboard()` produces `OPC_EVENT_KEYBOARD_SHOWN` and
+  `CloseVirtualKeyboard()` produces `OPC_EVENT_KEYBOARD_HIDDEN`. A player can also dismiss
+  the keyboard themselves, and today your game is **not** told when they do — so never
+  assume it is still up. Let a tap on the field raise it again.
+
+### Opening a link on the player's device
+
+For anything the player has to finish outside the game — linking an account, a purchase,
+a support page. Opening it on the server would put the page on a machine the player cannot
+reach; this opens it on their phone, TV or computer.
+
+```cpp
+const char* url = "https://example.com/link-account";
+
+if (opc::GamingSdk::Has(OPC_CAP_OPEN_URL)) {
+    opc::GamingSdk::OpenUrl(url);
+}
+
+// Either way, also show the link in the game (as text or a QR code).
+ShowLinkOnScreen(url);
+```
+
+- **Check `OPC_CAP_OPEN_URL` each time** you are about to open a link. It is set only when
+  the player's app can open links, and it can change during a session. Without it,
+  `OpenUrl()` returns `OPC_UNSUPPORTED` and nothing is sent.
+- **`http://` or `https://` only, at most 2048 bytes, no control characters.** Anything
+  else returns `OPC_INVALID_ARGUMENT` and is not sent.
+- **`OPC_OK` means the platform took the request — not that the page opened.** Nothing
+  reports back from the player's device, and they may dismiss it. Never make progress
+  depend on the link having been opened, and keep the on-screen fallback.
+- **The link opens on the player's device**, so it must be reachable from the internet —
+  no `localhost`, LAN addresses or file paths.
 
 ### Reacting to changes
 
@@ -152,9 +197,10 @@ what arrives.
 | `GetSessionInfo()` | Everything about the session, in one struct |
 | `GetPlatformType()` | Shorthand for the device type |
 | `GetInputMode()` | Shorthand for what the player is sending |
-| `OpenVirtualKeyboard(rect, hint)` | Show the player's on-screen keyboard |
+| `Has(capability)` | Shorthand: is this `OPC_CAP_*` bit set right now? |
+| `OpenVirtualKeyboard(rect, hint)` | Show the player's on-screen keyboard. Check `OPC_CAP_VIRTUAL_KEYBOARD` first |
 | `CloseVirtualKeyboard()` | Hide it again |
-| `OpenUrl(url)` | Open a link on the player's device. `http`/`https`, max 2048 bytes |
+| `OpenUrl(url)` | Open a link on the player's device. Check `OPC_CAP_OPEN_URL` first. `http`/`https`, max 2048 bytes |
 | `RegisterStreamEventCallback(cb, ctx)` | One handler for every session event |
 | `UnregisterStreamEventCallback()` | Stop delivery |
 
@@ -167,13 +213,20 @@ Every enum, with its numeric values, is documented at the top of
 
 ```
 include/opc_gamingsdk.h      the only header you include
-opc_gamingsdk.lib            link against this
-opc_gamingsdk_d.lib          the same library with symbols and tracing
-opc_gamingsdk.dll            the runtime
+lib/x64/opc_gamingsdk.lib    link against this
+lib/x64/opc_gamingsdk_d.lib  the same library with symbols and tracing
+bin/x64/opc_gamingsdk.dll    the runtime
+tools/opc_mock_host.exe      a stand-in host for testing on your own machine
+tools/opc_sample.exe         a worked example of the whole API
 ```
 
-The libraries and runtime are distributed separately from this repository, which carries
-the header and the documentation. See the releases page, or contact us for a build.
+This repository carries the header and the documentation. The libraries, the runtime and
+the tools are in a zip attached to each release on the
+[Releases page](https://github.com/OnePlay-Internet/OnePlay-GameStream-SDK/releases).
+
+**Do not ship `opc_gamingsdk.dll` with your game.** OnePlay servers provide the runtime and
+tell the library where it is; the copy in the zip is there so you can test locally with the
+mock host and the sample.
 
 `opc_gamingsdk.lib` is a **static library, not an import library**. It loads the runtime on
 first use, so a machine without it simply reports "not streaming" rather than failing to
@@ -204,10 +257,20 @@ for you.
 
 ## Testing without a host
 
-A mock host is available that speaks the same protocol on an ordinary desktop, with no
-server involved. It can also reach states a real session cannot be put into on demand —
-rotating a phone, resizing a screen, connecting a gamepad, ending a session — which are the
-paths a game is most likely to get wrong. Ask us for it.
+`tools/opc_mock_host.exe` in the release zip speaks the same protocol as a OnePlay server,
+on an ordinary desktop with no server involved. Run it, then run your game (or
+`tools/opc_sample.exe`) with `opc_gamingsdk.dll` next to it. The mock prints every request
+it receives, so you can check the rectangle or URL you sent is the one that arrived.
+
+It can also reach states a real session cannot be put into on demand — rotating a phone,
+resizing a screen, connecting a gamepad, turning a capability off, switching to a browser
+player, ending a session — which are the paths a game is most likely to get wrong. Its keys
+are listed when it starts and in the `README.md` inside the zip. Apart from a player
+dismissing the keyboard (which a real session cannot report yet, see above), what works
+against the mock works the same on a real session.
+
+`opc_sample.exe --open-url https://example.com` sends one link and exits, which is a quick
+way to check `OpenUrl()` end to end.
 
 ---
 

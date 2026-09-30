@@ -153,7 +153,7 @@
 
 #define OPC_SDK_VERSION_MAJOR 1
 #define OPC_SDK_VERSION_MINOR 0
-#define OPC_SDK_VERSION_PATCH 1
+#define OPC_SDK_VERSION_PATCH 2
 
 #if defined(_WIN32)
   #define OPC_CALL __cdecl
