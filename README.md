@@ -74,9 +74,10 @@ opc::GamingSdk::CloseVirtualKeyboard();
 - **You own the keyboard.** While your game is connected, the platform does not raise a
   keyboard on its own when your text fields get focus, so call `OpenVirtualKeyboard()`
   for every field that needs one.
-- **Without `OPC_CAP_VIRTUAL_KEYBOARD`** the call returns `OPC_UNSUPPORTED` and no keyboard
-  appears. The player's device has no way to show one, so do not leave them on a field
-  they cannot type into: skip it, or offer another way to enter the value.
+- **Without `OPC_CAP_VIRTUAL_KEYBOARD`** no keyboard appears - and the call still returns
+  `OPC_OK`, as every request does. Check the capability before calling: the player's
+  device has no way to show one, so do not leave them on a field they cannot type into.
+  Skip it, or offer another way to enter the value.
 - **Events:** your own `OpenVirtualKeyboard()` produces `OPC_EVENT_KEYBOARD_SHOWN` and
   `CloseVirtualKeyboard()` produces `OPC_EVENT_KEYBOARD_HIDDEN`. A player can also dismiss
   the keyboard themselves, and today your game is **not** told when they do — so never
@@ -100,15 +101,36 @@ ShowLinkOnScreen(url);
 ```
 
 - **Check `OPC_CAP_OPEN_URL` each time** you are about to open a link. It is set only when
-  the player's app can open links, and it can change during a session. Without it,
-  `OpenUrl()` returns `OPC_UNSUPPORTED` and nothing is sent.
+  the player's app can open links, and it can change during a session. Without it nothing
+  is sent, though `OpenUrl()` still returns `OPC_OK`.
 - **`http://` or `https://` only, at most 2048 bytes, no control characters.** Anything
-  else returns `OPC_INVALID_ARGUMENT` and is not sent.
+  else is dropped, not sent.
 - **`OPC_OK` means the platform took the request — not that the page opened.** Nothing
   reports back from the player's device, and they may dismiss it. Never make progress
   depend on the link having been opened, and keep the on-screen fallback.
 - **The link opens on the player's device**, so it must be reachable from the internet —
   no `localhost`, LAN addresses or file paths.
+
+### Showing and hiding the cursor
+
+On touch devices OnePlay hides the Windows cursor, because a finger needs no pointer. When a
+screen in your game does want one — a menu driven by a gamepad, a map you pan with a mouse —
+ask for it back, and hide it again when you leave:
+
+```cpp
+void OnEnterMenu()     { opc::GamingSdk::SetCursorVisible(true);  }
+void OnEnterGameplay() { opc::GamingSdk::SetCursorVisible(false); }
+```
+
+- **No capability to check.** The platform does this on the server's own screen, so it
+  works for every player, whatever their device or app.
+- **Your choice wins for as long as your game runs.** When it exits — or calls
+  `Shutdown()`, or crashes — the platform's own setting comes back.
+- **Call it when what you want changes**, not every frame.
+- **It acts on the Windows cursors** — arrow, I-beam, hand and the rest. A cursor your game
+  draws itself (its own `HCURSOR` or a sprite) is still yours to show and hide.
+- On a OnePlay server older than SDK 1.1 this returns `OPC_UNSUPPORTED` and does nothing.
+  Everything else in the SDK keeps working.
 
 ### Reacting to changes
 
@@ -201,6 +223,7 @@ what arrives.
 | `OpenVirtualKeyboard(rect, hint)` | Show the player's on-screen keyboard. Check `OPC_CAP_VIRTUAL_KEYBOARD` first |
 | `CloseVirtualKeyboard()` | Hide it again |
 | `OpenUrl(url)` | Open a link on the player's device. Check `OPC_CAP_OPEN_URL` first. `http`/`https`, max 2048 bytes |
+| `SetCursorVisible(visible)` | Show or hide the cursor on the player's screen. Since 1.1 |
 | `RegisterStreamEventCallback(cb, ctx)` | One handler for every session event |
 | `UnregisterStreamEventCallback()` | Stop delivery |
 
@@ -270,7 +293,8 @@ dismissing the keyboard (which a real session cannot report yet, see above), wha
 against the mock works the same on a real session.
 
 `opc_sample.exe --open-url https://example.com` sends one link and exits, which is a quick
-way to check `OpenUrl()` end to end.
+way to check `OpenUrl()` end to end. `opc_sample.exe --cursor hide` hides the cursor for a
+minute; the mock prints the request but leaves your own cursor alone.
 
 ---
 

@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.1.0
+
+> **Binaries follow.** Until the 1.1.0 zip is on the Releases page, build against the 1.0.2
+> library as before - it links with this header for every call except `SetCursorVisible()`.
+> The changes to existing calls below reach your game from the OnePlay platform itself, with
+> no rebuild.
+
+- **New: `SetCursorVisible(bool)`** (`OpcSetCursorVisible` in C) shows or hides the mouse
+  cursor on the player's screen. On touch devices OnePlay hides the cursor; a game can now
+  bring it back for a screen that wants a pointer, and hide it again. Your choice holds
+  while your game runs, and the platform's own setting returns when it exits.
+- A game built against 1.1 on a OnePlay server still running 1.0 keeps every other call;
+  only `SetCursorVisible()` returns `OPC_UNSUPPORTED` there.
+- **Fixed: `OpenVirtualKeyboard()` could stall your game for up to a second** when called
+  repeatedly while the platform was busy. No SDK call writes to the platform on your
+  thread any more, so a busy, hung or missing platform can never hold your game up.
+- **`OpenVirtualKeyboard()`, `CloseVirtualKeyboard()`, `OpenUrl()` and
+  `SetCursorVisible()` now always return `OPC_OK`**, instead of `OPC_UNSUPPORTED`,
+  `OPC_INVALID_ARGUMENT` or `OPC_DISCONNECTED`. If your game branched on those results,
+  check the capability (`OPC_CAP_VIRTUAL_KEYBOARD`, `OPC_CAP_OPEN_URL`) before calling
+  instead. No rebuild needed: this comes with the platform's library.
+
+Additive: a game built against 1.0 keeps working unchanged. Rebuild against the 1.1 header
+and library only if you want the new call.
+
 ## 1.0.2
 
 - **Fixed: `OpenVirtualKeyboard()`, `CloseVirtualKeyboard()` and `OpenUrl()` could freeze the

@@ -1,6 +1,6 @@
 /**
  * opc_gamingsdk.h
- * OnePlay Gaming SDK  -  v1.0
+ * OnePlay Gaming SDK  -  v1.1
  *
  * Lets your game find out what device the player is actually on, and ask the OnePlay
  * platform to do things the game cannot do itself.
@@ -45,7 +45,12 @@
  *       and nothing connects or allocates. That is a normal outcome, not an error.
  *
  *   2.  Nothing blocks.  Initialize() connects in the background and returns quickly.
- *       Every other call reads a local snapshot, so it is safe on your frame thread.
+ *       Every other call reads a local snapshot or queues a request, so it is safe on
+ *       your frame thread - even if the platform is busy, hung or gone.
+ *
+ *       The four requests - OpenVirtualKeyboard, CloseVirtualKeyboard, OpenUrl and
+ *       SetCursorVisible - return OPC_OK every time. Do not branch on their result:
+ *       check the capability BEFORE calling, and watch the events for what happened.
  *
  *   3.  Nothing to call per frame.  There is no tick, no pump, no polling requirement.
  *       Read GetSessionInfo() whenever you want it, and register an event handler if you
@@ -152,8 +157,8 @@
 #include <stdint.h>
 
 #define OPC_SDK_VERSION_MAJOR 1
-#define OPC_SDK_VERSION_MINOR 0
-#define OPC_SDK_VERSION_PATCH 2
+#define OPC_SDK_VERSION_MINOR 1
+#define OPC_SDK_VERSION_PATCH 0
 
 #if defined(_WIN32)
   #define OPC_CALL __cdecl
@@ -420,8 +425,10 @@ OpcClientType OPC_CALL OpcGetPlatformType(void);
  * What the player types arrives as ordinary key input - you do not need to handle
  * anything special to receive it.
  *
- * Check OPC_CAP_VIRTUAL_KEYBOARD first. Without it this returns OPC_UNSUPPORTED
- * and no keyboard appears, which would leave a player with no way to type.
+ * Check OPC_CAP_VIRTUAL_KEYBOARD first. Without it no keyboard appears, and this call
+ * cannot tell you so: like every request it returns OPC_OK at once. A player left on a
+ * field with no way to type is what the capability check prevents.
+ * OPC_EVENT_KEYBOARD_SHOWN follows when the platform has raised it.
  *
  * request may be NULL, meaning "no rect, plain text". */
 OpcStatus OPC_CALL OpcOpenVirtualKeyboard(const OpcKeyboardRequest *request);
@@ -435,15 +442,33 @@ OpcStatus OPC_CALL OpcCloseVirtualKeyboard(void);
  * a support page. Opening it on the server would put the page on a machine they cannot
  * reach; this puts it in front of them.
  *
- * Check OPC_CAP_OPEN_URL first. Without it this returns OPC_UNSUPPORTED.
+ * Check OPC_CAP_OPEN_URL first. Without it nothing is sent - and, like every request,
+ * this still returns OPC_OK.
  *
- * Must be http or https, and at most 2048 bytes. Anything else is rejected with
- * OPC_INVALID_ARGUMENT rather than passed on - a URL from a game becomes a link on a
- * player's phone, and the scheme is the difference between opening a web page and handing
- * an arbitrary handler on their device something to act on.
+ * Must be http or https, and at most 2048 bytes. Anything else is dropped rather than
+ * passed on - a URL from a game becomes a link on a player's phone, and the scheme is the
+ * difference between opening a web page and handing an arbitrary handler on their device
+ * something to act on.
  *
  * The platform does not report whether the player actually opened it. */
 OpcStatus OPC_CALL OpcOpenUrl(const char *url);
+
+/* Shows (visible != 0) or hides (visible == 0) the mouse cursor on the player's screen.
+ * Added in 1.1.
+ *
+ * On touch devices OnePlay hides the Windows cursor, because a finger needs none. That
+ * suits gameplay but not a screen that wants a pointer - and before this call a game had
+ * no way to bring it back. Call it when the state you want changes, not every frame.
+ *
+ * Your choice holds for as long as your game is connected, whatever the platform would
+ * otherwise do. When you call Shutdown() or your game exits, the platform's own setting
+ * comes back.
+ *
+ * This acts on the Windows system cursors - the arrow, I-beam, hand and the rest. A cursor
+ * your game draws itself (its own HCURSOR, or a sprite) is still yours to show and hide.
+ *
+ * OPC_UNSUPPORTED if the OnePlay host is older than this call. */
+OpcStatus OPC_CALL OpcSetCursorVisible(int32_t visible);
 
 /* Registers your single event handler. Everything that happens during a session
  * arrives here - session start and end, the player dropping and coming back,
@@ -537,6 +562,11 @@ namespace opc {
     /** Opens a URL in the browser on the player's device. Check OPC_CAP_OPEN_URL first. */
     static OpcStatus OpenUrl(const char *url) {
       return OpcOpenUrl(url);
+    }
+
+    /** Shows or hides the mouse cursor on the player's screen. Since 1.1. */
+    static OpcStatus SetCursorVisible(bool visible) {
+      return OpcSetCursorVisible(visible ? 1 : 0);
     }
 
     /** What kind of input this player is actually sending. */
