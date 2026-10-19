@@ -1,6 +1,6 @@
 /**
  * opc_gamingsdk.h
- * OnePlay Gaming SDK  -  v1.1
+ * OnePlay Gaming SDK  -  v1.2
  *
  * Lets your game find out what device the player is actually on, and ask the OnePlay
  * platform to do things the game cannot do itself.
@@ -122,6 +122,7 @@
  *     0x20  OPC_CAP_OPEN_URL          OpenUrl() will work
  *     0x40  OPC_CAP_NATIVE_TOUCH      the client CAN send real touch contacts.
  *                                     Whether it currently IS, is inputMode above
+ *     0x80  OPC_CAP_TERMINATE_STREAM  TerminateStream() will end the session
  *
  *   OpcSessionState
  *     0  OPC_SESSION_NONE         nobody is connected
@@ -157,7 +158,7 @@
 #include <stdint.h>
 
 #define OPC_SDK_VERSION_MAJOR 1
-#define OPC_SDK_VERSION_MINOR 1
+#define OPC_SDK_VERSION_MINOR 2
 #define OPC_SDK_VERSION_PATCH 0
 
 #if defined(_WIN32)
@@ -238,8 +239,9 @@ typedef enum OpcCapability {
   OPC_CAP_TV_SCREEN         = 1u << 3,  /* Ten-foot viewing distance.            */
   OPC_CAP_VIRTUAL_KEYBOARD  = 1u << 4,  /* OpenVirtualKeyboard() will work.      */
   OPC_CAP_OPEN_URL          = 1u << 5,  /* OpenUrl() will work.                  */
-  OPC_CAP_NATIVE_TOUCH      = 1u << 6   /* The player's client can send real touch
+  OPC_CAP_NATIVE_TOUCH      = 1u << 6,  /* The player's client can send real touch
                                            contacts, not just mouse input.       */
+  OPC_CAP_TERMINATE_STREAM  = 1u << 7   /* TerminateStream() will work. Since 1.2. */
 } OpcCapability;
 
 typedef enum OpcSessionState {
@@ -470,6 +472,24 @@ OpcStatus OPC_CALL OpcOpenUrl(const char *url);
  * OPC_UNSUPPORTED if the OnePlay host is older than this call. */
 OpcStatus OPC_CALL OpcSetCursorVisible(int32_t visible);
 
+/* Ends the player's streaming session, as if they had chosen to quit. Added in 1.2.
+ *
+ * For a game that has finished - the player chose "Quit" in your menu - and wants the
+ * player taken out of the stream rather than left looking at a desktop. The player's app
+ * or browser closes the stream and ends the session with OnePlay.
+ *
+ * Check OPC_CAP_TERMINATE_STREAM first. Without it the player's app cannot do this and
+ * nothing happens - tell the player to leave from their app's menu instead. Like every
+ * request this returns OPC_OK at once, and nothing reports back.
+ *
+ * reason may be NULL. If given, it is a short UTF-8 message the player's app may show,
+ * e.g. "Thanks for playing". At most 256 bytes; longer is cut.
+ *
+ * Call Shutdown() after this and before your process exits: Shutdown waits briefly for
+ * the request to be sent. Do not wait for anything else - your game is not told when the
+ * stream has ended, and may simply exit. */
+OpcStatus OPC_CALL OpcTerminateStream(const char *reason);
+
 /* Registers your single event handler. Everything that happens during a session
  * arrives here - session start and end, the player dropping and coming back,
  * screen and orientation changes, gamepads, the on-screen keyboard.
@@ -567,6 +587,11 @@ namespace opc {
     /** Shows or hides the mouse cursor on the player's screen. Since 1.1. */
     static OpcStatus SetCursorVisible(bool visible) {
       return OpcSetCursorVisible(visible ? 1 : 0);
+    }
+
+    /** Ends the player's streaming session. Check OPC_CAP_TERMINATE_STREAM first. Since 1.2. */
+    static OpcStatus TerminateStream(const char *reason = nullptr) {
+      return OpcTerminateStream(reason);
     }
 
     /** What kind of input this player is actually sending. */

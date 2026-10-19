@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.0
+
+> **Binaries follow**, together with 1.1.0's. Until the zip is on the Releases page, build
+> against the 1.0.2 library as before - it links with this header for every call except
+> `SetCursorVisible()` and `TerminateStream()`.
+
+- **New: `TerminateStream(reason)`** (`OpcTerminateStream` in C) ends the player's
+  streaming session - for when the player quits your game. Check the new capability
+  `OPC_CAP_TERMINATE_STREAM` (0x80) first; call `Shutdown()` before exiting.
+- `Shutdown()` now waits up to 500 ms for requests already made to be sent.
+
+Additive: a game built against 1.0 or 1.1 keeps working unchanged.
+
 ## 1.1.0
 
 > **Binaries follow.** Until the 1.1.0 zip is on the Releases page, build against the 1.0.2

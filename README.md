@@ -132,6 +132,30 @@ void OnEnterGameplay() { opc::GamingSdk::SetCursorVisible(false); }
 - On a OnePlay server older than SDK 1.1 this returns `OPC_UNSUPPORTED` and does nothing.
   Everything else in the SDK keeps working.
 
+### Ending the session when the player quits
+
+When the player chooses "Quit" in your game, take them out of the stream instead of leaving
+them on a desktop:
+
+```cpp
+void OnPlayerQuit() {
+    if (opc::GamingSdk::Has(OPC_CAP_TERMINATE_STREAM)) {
+        opc::GamingSdk::TerminateStream("Thanks for playing");
+    } else {
+        ShowMessage("You can leave from the OnePlay menu.");   // the player's app cannot do it
+    }
+    opc::GamingSdk::Shutdown();   // waits briefly for the request to go out
+    // ...then exit as you normally would
+}
+```
+
+- **Check `OPC_CAP_TERMINATE_STREAM`.** It is set when the player's app can end the session
+  for you. Without it nothing happens - like every request, the call still returns `OPC_OK`.
+- **Call `Shutdown()` before you exit.** It waits up to half a second for the request to be
+  sent, so quitting straight after cannot lose it.
+- **The reason is optional**, at most 256 bytes of UTF-8. The player's app may show it.
+- **Nothing reports back.** Do not wait for the stream to end; carry on quitting.
+
 ### Reacting to changes
 
 ```cpp
@@ -224,6 +248,7 @@ what arrives.
 | `CloseVirtualKeyboard()` | Hide it again |
 | `OpenUrl(url)` | Open a link on the player's device. Check `OPC_CAP_OPEN_URL` first. `http`/`https`, max 2048 bytes |
 | `SetCursorVisible(visible)` | Show or hide the cursor on the player's screen. Since 1.1 |
+| `TerminateStream(reason)` | End the player's session, e.g. when they quit. Check `OPC_CAP_TERMINATE_STREAM` first. Since 1.2 |
 | `RegisterStreamEventCallback(cb, ctx)` | One handler for every session event |
 | `UnregisterStreamEventCallback()` | Stop delivery |
 
