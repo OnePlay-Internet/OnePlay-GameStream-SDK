@@ -158,7 +158,7 @@
 #include <stdint.h>
 
 #define OPC_SDK_VERSION_MAJOR 1
-#define OPC_SDK_VERSION_MINOR 2
+#define OPC_SDK_VERSION_MINOR 3
 #define OPC_SDK_VERSION_PATCH 0
 
 #if defined(_WIN32)
@@ -472,6 +472,22 @@ OpcStatus OPC_CALL OpcOpenUrl(const char *url);
  * OPC_UNSUPPORTED if the OnePlay host is older than this call. */
 OpcStatus OPC_CALL OpcSetCursorVisible(int32_t visible);
 
+/* Tells OnePlay whether your game is drawing its own pointer that the player moves with a
+ * gamepad (controlled != 0) or has stopped (controlled == 0). Added in 1.3.
+ *
+ * For a game that hides the Windows cursor and draws a virtual one instead - a menu
+ * pointer steered with a stick. The player's app hears of it as "a cursor is on screen",
+ * just as it does for SetCursorVisible(true), and can show a gamepad player how to use
+ * it. Stopping takes that away again.
+ *
+ * Nothing on the server changes: the Windows cursor stays exactly as it is, and showing
+ * or hiding it is still SetCursorVisible's job. Call this when your pointer appears or
+ * goes, not every frame. When you call Shutdown() or your game exits, it is as if you had
+ * passed 0.
+ *
+ * OPC_UNSUPPORTED if the OnePlay host is older than this call. */
+OpcStatus OPC_CALL OpcSetVirtualCursorControlledByGamepad(int32_t controlled);
+
 /* Ends the player's streaming session, as if they had chosen to quit. Added in 1.2.
  *
  * For a game that has finished - the player chose "Quit" in your menu - and wants the
@@ -587,6 +603,11 @@ namespace opc {
     /** Shows or hides the mouse cursor on the player's screen. Since 1.1. */
     static OpcStatus SetCursorVisible(bool visible) {
       return OpcSetCursorVisible(visible ? 1 : 0);
+    }
+
+    /** Says whether the game is drawing a gamepad-driven pointer of its own. Since 1.3. */
+    static OpcStatus SetVirtualCursorControlledByGamepad(bool controlled) {
+      return OpcSetVirtualCursorControlledByGamepad(controlled ? 1 : 0);
     }
 
     /** Ends the player's streaming session. Check OPC_CAP_TERMINATE_STREAM first. Since 1.2. */

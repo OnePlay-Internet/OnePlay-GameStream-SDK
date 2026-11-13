@@ -132,6 +132,23 @@ void OnEnterGameplay() { opc::GamingSdk::SetCursorVisible(false); }
 - On a OnePlay server older than SDK 1.1 this returns `OPC_UNSUPPORTED` and does nothing.
   Everything else in the SDK keeps working.
 
+### A pointer your game draws for the gamepad
+
+If your game hides the Windows cursor and draws its own pointer that the player steers with
+a stick, say when it appears and when it goes:
+
+```cpp
+void OnVirtualPointerShown()  { opc::GamingSdk::SetVirtualCursorControlledByGamepad(true);  }
+void OnVirtualPointerHidden() { opc::GamingSdk::SetVirtualCursorControlledByGamepad(false); }
+```
+
+- **Nothing changes on the server.** The Windows cursor stays as it is; this only tells the
+  player's app that a cursor is on screen, so a TV app can show a controller player how to
+  move it.
+- **No capability to check**, and it always returns `OPC_OK`. Call it when the state
+  changes, not every frame. Exiting your game counts as `false`.
+- On a OnePlay server older than SDK 1.3 it does nothing.
+
 ### Ending the session when the player quits
 
 When the player chooses "Quit" in your game, take them out of the stream instead of leaving
@@ -249,6 +266,7 @@ what arrives.
 | `OpenUrl(url)` | Open a link on the player's device. Check `OPC_CAP_OPEN_URL` first. `http`/`https`, max 2048 bytes |
 | `SetCursorVisible(visible)` | Show or hide the cursor on the player's screen. Since 1.1 |
 | `TerminateStream(reason)` | End the player's session, e.g. when they quit. Check `OPC_CAP_TERMINATE_STREAM` first. Since 1.2 |
+| `SetVirtualCursorControlledByGamepad(controlled)` | Tell the player's app your game is drawing a gamepad-driven pointer of its own. Since 1.3 |
 | `RegisterStreamEventCallback(cb, ctx)` | One handler for every session event |
 | `UnregisterStreamEventCallback()` | Stop delivery |
 

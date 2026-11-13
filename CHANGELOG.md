@@ -1,10 +1,23 @@
 # Changelog
 
-## 1.2.0
+## 1.3.0
 
-> **Binaries follow**, together with 1.1.0's. Until the zip is on the Releases page, build
-> against the 1.0.2 library as before - it links with this header for every call except
-> `SetCursorVisible()` and `TerminateStream()`.
+> **Binaries follow.** Until the 1.3.0 zip is on the Releases page, build against the 1.2.0
+> library - it links with this header for every call except
+> `SetVirtualCursorControlledByGamepad()`.
+
+- **New: `SetVirtualCursorControlledByGamepad(bool)`**
+  (`OpcSetVirtualCursorControlledByGamepad` in C). Call it with `true` when your game hides
+  the Windows cursor and draws its own pointer that the player moves with a gamepad, and
+  `false` when that pointer goes. The player's app is told a cursor is on screen and can
+  show a controller player how to use it. The Windows cursor is not changed - that is still
+  `SetCursorVisible()`. Exiting your game counts as `false`.
+- Includes 1.2.1's fix: the library is linked against the newer MinGW runtime.
+
+Additive: a game built against 1.0, 1.1 or 1.2 keeps working unchanged. On a OnePlay server
+older than 1.3 the new call returns `OPC_OK` or `OPC_UNSUPPORTED` and does nothing.
+
+## 1.2.0
 
 - **New: `TerminateStream(reason)`** (`OpcTerminateStream` in C) ends the player's
   streaming session - for when the player quits your game. Check the new capability
